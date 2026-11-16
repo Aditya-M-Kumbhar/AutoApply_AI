@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    env_file: backend/.env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '10000'
+      CLIENT_ORIGIN: http://localhost:10000
+      UPLOAD_DIR: /data/resumes
+      CRAWLER_CONCURRENCY: '1'
+    ports:
+      - '10000:10000'
+    volumes:
+      - autoapply-resumes:/data
+volumes:
+  autoapply-resumes:

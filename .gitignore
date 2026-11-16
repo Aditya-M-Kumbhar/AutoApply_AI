@@ -1,0 +1,12 @@
+# Local development previews, screenshots, and temporary package caches.
+work/
+logs/
+**/node_modules/
+**/dist/
+**/uploads/
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/.cache/
+backend/public/screenshots/
