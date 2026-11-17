@@ -52,4 +52,4 @@ const SKILL_DICT = [
 const trie = new Trie();
 SKILL_DICT.forEach(skill => trie.insert(skill));
 
-export { trie };
+export { trie, SKILL_DICT };

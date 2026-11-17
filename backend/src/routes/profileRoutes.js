@@ -18,6 +18,7 @@ const pdf = async (dataBuffer) => {
 import { protect } from "../middlewares/authMiddleware.js";
 import { asyncHandler } from "../middlewares/errorMiddleware.js";
 import { generateText } from "../services/aiService.js";
+import { extractResumeSkills } from "../services/resumeSkills.js";
 import User from "../models/User.js";
 import logger from "../config/logger.js";
 import { trie } from "../utils/trieEngine.js";
@@ -84,39 +85,12 @@ router.post(
         });
       }
 
-      // Call Gemini for structured skill isolation
-      const prompt = `Extract all technical skills from this resume text. Return a strictly formatted JSON array of strings (e.g. ["React", "Node.js", "Python"]). Do not write markdown wrappers like \`\`\`json. Resume Text:\n\n${pdfText}`;
-      const systemInstruction =
-        "You are an ATS parser. Extract only technical skills and return a raw JSON array of strings.";
-
-      const aiResponse = await generateText(prompt, systemInstruction);
-      let skills = [];
-
-      try {
-        skills = JSON.parse(aiResponse);
-      } catch (err) {
-        // Fallback JSON brackets extraction
-        const firstSquare = aiResponse.indexOf("[");
-        const lastSquare = aiResponse.lastIndexOf("]");
-        if (
-          firstSquare !== -1 &&
-          lastSquare !== -1 &&
-          lastSquare > firstSquare
-        ) {
-          try {
-            skills = JSON.parse(aiResponse.slice(firstSquare, lastSquare + 1));
-          } catch (innerErr) {
-            logger.error(`Inner JSON parsing failed: ${innerErr.message}`);
-          }
-        }
-      }
-
-      if (!Array.isArray(skills)) {
-        skills = [];
-      }
-
-      // Clean skills array
-      skills = skills.map((s) => String(s).trim()).filter(Boolean);
+      const extraction = await extractResumeSkills(pdfText, {
+        useAI: process.env.RESUME_AI_ENRICHMENT === "true",
+        generate: generateText,
+        onFallback: () => logger.warn("Resume AI enrichment unavailable; using local skill extraction."),
+      });
+      let skills = extraction.skills;
 
       // Update user profile in Mongoose
       const user = await User.findById(req.user.id);
@@ -125,6 +99,9 @@ router.post(
           .status(404)
           .json({ status: "error", message: "User not found." });
       }
+
+      // A resume without recognized dictionary skills must not erase manual skills.
+      if (!skills.length) skills = user.skills || [];
 
       // Set root skills and profileVault skills
       user.skills = skills;
@@ -151,13 +128,14 @@ router.post(
         data: {
           skills,
           resumePath: req.file.path,
+          extractionMethod: extraction.method,
         },
       });
     } catch (error) {
       logger.error(`Error parsing resume PDF: ${error.message}`);
       res.status(500).json({
         status: "error",
-        message: `Resume parsing failed: ${error.message}`,
+        message: "Unable to process this resume. Upload a text-based PDF, or add your skills manually and try again later.",
       });
     }
   }),

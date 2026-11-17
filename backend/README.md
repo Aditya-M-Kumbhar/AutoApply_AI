@@ -1,5 +1,11 @@
 # Auto Apply AI API, retrieval, and evaluations
 
+## Resume skill extraction
+
+Text-based PDF resumes use local, symbol-aware skill matching by default, without an AI-provider request or key. Extracted skills remain editable. This dictionary approach can miss unfamiliar skills; users can add them manually. If no skills are recognized, existing profile skills are preserved. Image-only scans require a text-based PDF; OCR is not included.
+
+Optional `RESUME_AI_ENRICHMENT=true` enables provider-assisted enrichment. Provider failures or malformed responses fall back to local extraction. Leave this setting unset or `false` for provider-independent uploads. Hugging Face credentials are not required for resume uploads.
+
 ## Fix the current backend connections
 
 The current environment reaches both AI providers, but its MongoDB and Redis
